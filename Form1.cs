@@ -1,13 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+﻿using System.Text;
 
 namespace TimerApplication
 {
@@ -15,8 +6,12 @@ namespace TimerApplication
     {
         private List<TimerControl> timers = new List<TimerControl>();
         private Panel mainPanel;
+        private Panel containerPanel;
         private Button createTimerButton;
         private Button exportButton;
+        private const int MAX_TIMERS = 30;
+        private const int TIMER_HEIGHT = 60;
+        private const int TIMER_TOTAL_HEIGHT = 65;
 
         public Form1()
         {
@@ -26,60 +21,201 @@ namespace TimerApplication
 
         private void SetupUI()
         {
-            // Update form properties
+            this.AutoScaleMode = AutoScaleMode.Dpi;
+
             this.Text = "Multi-Timer Application";
-            this.Size = new Size(600, 700);
+            this.ClientSize = new Size(480, 650);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = Color.WhiteSmoke;
+            this.MinimumSize = new Size(496, 400);
+            this.FormBorderStyle = FormBorderStyle.Sizable;
 
             // Create Timer button
             createTimerButton = new Button();
             createTimerButton.Text = "Create New Timer";
-            createTimerButton.Size = new Size(150, 40);
-            createTimerButton.Location = new Point(20, 20);
+            createTimerButton.Size = new Size(140, 32);
+            createTimerButton.Location = new Point(8, 8);
             createTimerButton.BackColor = Color.LightBlue;
             createTimerButton.FlatStyle = FlatStyle.Flat;
+            createTimerButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
             createTimerButton.Click += CreateTimerButton_Click;
+            createTimerButton.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             this.Controls.Add(createTimerButton);
 
             // Export button
             exportButton = new Button();
             exportButton.Text = "Export to CSV";
-            exportButton.Size = new Size(150, 40);
-            exportButton.Location = new Point(190, 20);
+            exportButton.Size = new Size(140, 32);
+            exportButton.Location = new Point(156, 8);
             exportButton.BackColor = Color.LightGreen;
             exportButton.FlatStyle = FlatStyle.Flat;
+            exportButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
             exportButton.Click += ExportButton_Click;
+            exportButton.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             this.Controls.Add(exportButton);
 
-            // Main panel for timers
+            // Main panel with custom scrollbar
             mainPanel = new Panel();
-            mainPanel.Location = new Point(20, 80);
-            mainPanel.Size = new Size(550, 580);
-            mainPanel.AutoScroll = true;
+            mainPanel.Location = new Point(8, 48);
+            mainPanel.Size = new Size(464, 594);
             mainPanel.BorderStyle = BorderStyle.FixedSingle;
+            mainPanel.BackColor = Color.FromArgb(250, 250, 250);
+            mainPanel.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            mainPanel.AutoScroll = false;
             this.Controls.Add(mainPanel);
+
+            // Container panel inside main panel (this will hold the timers)
+            containerPanel = new Panel();
+            containerPanel.Location = new Point(0, 0);
+            containerPanel.Size = new Size(mainPanel.ClientSize.Width - 25, 10);
+            containerPanel.BackColor = Color.White;
+            containerPanel.AutoScroll = false;
+            mainPanel.Controls.Add(containerPanel);
+
+            // Create custom scrollbar
+            VScrollBar scrollBar = new VScrollBar();
+            scrollBar.Dock = DockStyle.Right;
+            scrollBar.Width = 25; // Wider scrollbar
+            scrollBar.Minimum = 0;
+            scrollBar.Maximum = 0;
+            scrollBar.SmallChange = 20;
+            scrollBar.LargeChange = 100;
+            scrollBar.Scroll += ScrollBar_Scroll;
+            mainPanel.Controls.Add(scrollBar);
+
+            // Store scrollbar reference
+            mainPanel.Tag = scrollBar;
+
+            // Handle mouse wheel
+            mainPanel.MouseWheel += MainPanel_MouseWheel;
+            containerPanel.MouseWheel += MainPanel_MouseWheel;
+
+            // Handle form resize
+            this.Resize += Form1_Resize;
+        }
+
+        private void ScrollBar_Scroll(object sender, ScrollEventArgs e)
+        {
+            containerPanel.Top = -e.NewValue;
+        }
+
+        private void MainPanel_MouseWheel(object sender, MouseEventArgs e)
+        {
+            VScrollBar scrollBar = mainPanel.Tag as VScrollBar;
+            if (scrollBar != null && scrollBar.Visible)
+            {
+                int newValue = scrollBar.Value - (e.Delta / 3);
+                newValue = Math.Max(scrollBar.Minimum, Math.Min(newValue, scrollBar.Maximum - scrollBar.LargeChange + 1));
+                scrollBar.Value = newValue;
+                containerPanel.Top = -newValue;
+            }
+        }
+
+        private void UpdateScrollBar()
+        {
+            VScrollBar scrollBar = mainPanel.Tag as VScrollBar;
+            if (scrollBar != null)
+            {
+                int totalHeight = timers.Count * TIMER_TOTAL_HEIGHT + 10;
+                int visibleHeight = mainPanel.ClientSize.Height;
+
+                if (totalHeight > visibleHeight)
+                {
+                    scrollBar.Visible = true;
+                    scrollBar.Maximum = totalHeight - visibleHeight + scrollBar.LargeChange - 1;
+                    scrollBar.LargeChange = visibleHeight;
+
+                    // Adjust container width when scrollbar is visible
+                    containerPanel.Width = mainPanel.ClientSize.Width - scrollBar.Width - 5;
+                }
+                else
+                {
+                    scrollBar.Visible = false;
+                    scrollBar.Value = 0;
+                    containerPanel.Top = 0;
+
+                    // Full width when no scrollbar
+                    containerPanel.Width = mainPanel.ClientSize.Width - 5;
+                }
+
+                // Update container height
+                containerPanel.Height = Math.Max(totalHeight, visibleHeight);
+            }
+
+            // Update all timer widths
+            foreach (TimerControl timer in timers)
+            {
+                timer.Width = containerPanel.Width - 10;
+            }
+        }
+
+        private void Form1_Resize(object sender, EventArgs e)
+        {
+            if (mainPanel != null && containerPanel != null)
+            {
+                UpdateScrollBar();
+            }
         }
 
         private void CreateTimerButton_Click(object sender, EventArgs e)
         {
-            if (timers.Count >= 10)
+            if (timers.Count >= MAX_TIMERS)
             {
-                MessageBox.Show("Maximum of 10 timers allowed.", "Limit Reached", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"Maximum of {MAX_TIMERS} timers allowed.", "Limit Reached", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
+            // Calculate dialog position based on button location
+            Point buttonScreenLocation = createTimerButton.PointToScreen(Point.Empty);
+
             TimerCreationDialog dialog = new TimerCreationDialog();
+            dialog.StartPosition = FormStartPosition.Manual;
+
+            // Position dialog at button location
+            dialog.Location = new Point(buttonScreenLocation.X, buttonScreenLocation.Y + createTimerButton.Height + 5);
+
+            // Make sure dialog doesn't go off screen
+            Rectangle screenBounds = Screen.FromControl(this).WorkingArea;
+            if (dialog.Right > screenBounds.Right)
+                dialog.Left = screenBounds.Right - dialog.Width;
+            if (dialog.Bottom > screenBounds.Bottom)
+                dialog.Top = screenBounds.Bottom - dialog.Height;
+
             if (dialog.ShowDialog() == DialogResult.OK)
             {
+                // Calculate exact position for new timer
+                int yPosition = timers.Count * TIMER_TOTAL_HEIGHT + 5;
+
                 TimerControl newTimer = new TimerControl(dialog.TimerName, dialog.TimerNarrative);
-                newTimer.Location = new Point(10, timers.Count * 120 + 10);
+                newTimer.Location = new Point(5, yPosition);
+                newTimer.Size = new Size(containerPanel.Width - 10, TIMER_HEIGHT);
                 newTimer.TimerDeleted += NewTimer_TimerDeleted;
 
                 timers.Add(newTimer);
-                mainPanel.Controls.Add(newTimer);
+                containerPanel.Controls.Add(newTimer);
 
+                UpdateScrollBar();
                 updateCreateButtonState();
+
+                // Scroll to show the new timer
+                ScrollToTimer(newTimer);
+            }
+        }
+
+        private void ScrollToTimer(TimerControl timer)
+        {
+            VScrollBar scrollBar = mainPanel.Tag as VScrollBar;
+            if (scrollBar != null && scrollBar.Visible)
+            {
+                int timerBottom = timer.Bottom;
+                int visibleHeight = mainPanel.ClientSize.Height;
+
+                if (timerBottom > visibleHeight)
+                {
+                    int newScrollValue = Math.Min(timerBottom - visibleHeight + 10, scrollBar.Maximum - scrollBar.LargeChange + 1);
+                    scrollBar.Value = newScrollValue;
+                    containerPanel.Top = -newScrollValue;
+                }
             }
         }
 
@@ -88,30 +224,34 @@ namespace TimerApplication
             TimerControl timerToRemove = sender as TimerControl;
             if (timerToRemove != null)
             {
+                int removedIndex = timers.IndexOf(timerToRemove);
+
                 timers.Remove(timerToRemove);
-                mainPanel.Controls.Remove(timerToRemove);
+                containerPanel.Controls.Remove(timerToRemove);
                 timerToRemove.Dispose();
 
-                // Reposition remaining timers
-                for (int i = 0; i < timers.Count; i++)
+                // Reposition all timers after the removed one
+                for (int i = removedIndex; i < timers.Count; i++)
                 {
-                    timers[i].Location = new Point(10, i * 120 + 10);
+                    int yPosition = i * TIMER_TOTAL_HEIGHT + 5;
+                    timers[i].Location = new Point(5, yPosition);
                 }
 
+                UpdateScrollBar();
                 updateCreateButtonState();
             }
         }
 
         private void updateCreateButtonState()
         {
-            createTimerButton.Enabled = timers.Count < 10;
-            if (timers.Count >= 10)
+            createTimerButton.Enabled = timers.Count < MAX_TIMERS;
+            if (timers.Count >= MAX_TIMERS)
             {
-                createTimerButton.Text = "Max Timers (10)";
+                createTimerButton.Text = $"Max ({MAX_TIMERS})";
             }
             else
             {
-                createTimerButton.Text = "Create New Timer";
+                createTimerButton.Text = $"New Timer ({timers.Count}/{MAX_TIMERS})";
             }
         }
 
@@ -160,11 +300,11 @@ namespace TimerApplication
         private TimeSpan elapsedTime;
         private bool isRunning;
 
-        private Label nameLabel;
-        private Label narrativeLabel;
+        private Label infoLabel;
         private Label timeLabel;
         private Button startStopButton;
         private Button deleteButton;
+        private ToolTip toolTip;
 
         public string TimerName { get; private set; }
         public string TimerNarrative { get; private set; }
@@ -187,7 +327,7 @@ namespace TimerApplication
         private void InitializeTimer()
         {
             timer = new System.Windows.Forms.Timer();
-            timer.Interval = 1000; // 1 second
+            timer.Interval = 1000;
             timer.Tick += Timer_Tick;
             elapsedTime = TimeSpan.Zero;
             isRunning = false;
@@ -195,54 +335,95 @@ namespace TimerApplication
 
         private void SetupTimerUI()
         {
-            this.Size = new Size(520, 100);
+            this.Size = new Size(420, 60);
             this.BorderStyle = BorderStyle.FixedSingle;
             this.BackColor = Color.White;
 
-            // Name label
-            nameLabel = new Label();
-            nameLabel.Text = "Name: " + TimerName;
-            nameLabel.Location = new Point(10, 10);
-            nameLabel.Size = new Size(400, 20);
-            nameLabel.Font = new Font("Arial", 10, FontStyle.Bold);
-            this.Controls.Add(nameLabel);
+            // Disable anchor for fixed positioning
+            this.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
 
-            // Narrative label
-            narrativeLabel = new Label();
-            narrativeLabel.Text = "Description: " + TimerNarrative;
-            narrativeLabel.Location = new Point(10, 30);
-            narrativeLabel.Size = new Size(400, 20);
-            narrativeLabel.Font = new Font("Arial", 9);
-            this.Controls.Add(narrativeLabel);
+            // Create tooltip for full text display
+            toolTip = new ToolTip();
+            toolTip.AutomaticDelay = 500;
+            toolTip.ReshowDelay = 100;
+
+            // Single info label for name and description
+            infoLabel = new Label();
+            UpdateInfoLabel();
+            infoLabel.Location = new Point(8, 6);
+            infoLabel.Size = new Size(300, 20);
+            infoLabel.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            infoLabel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            infoLabel.AutoEllipsis = true;
+
+            // Set tooltip to show full text
+            string fullText = $"{TimerName}: {TimerNarrative}";
+            toolTip.SetToolTip(infoLabel, fullText);
+
+            this.Controls.Add(infoLabel);
 
             // Time label
             timeLabel = new Label();
             timeLabel.Text = "00:00:00";
-            timeLabel.Location = new Point(10, 55);
-            timeLabel.Size = new Size(200, 30);
-            timeLabel.Font = new Font("Arial", 16, FontStyle.Bold);
+            timeLabel.Location = new Point(8, 30);
+            timeLabel.Size = new Size(130, 22);
+            timeLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
             timeLabel.ForeColor = Color.DarkBlue;
             this.Controls.Add(timeLabel);
 
             // Start/Stop button
             startStopButton = new Button();
             startStopButton.Text = "Stop";
-            startStopButton.Size = new Size(80, 30);
-            startStopButton.Location = new Point(350, 55);
+            startStopButton.Size = new Size(65, 26);
             startStopButton.BackColor = Color.Orange;
             startStopButton.FlatStyle = FlatStyle.Flat;
+            startStopButton.Font = new Font("Segoe UI", 8.5F);
+            startStopButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             startStopButton.Click += StartStopButton_Click;
             this.Controls.Add(startStopButton);
 
             // Delete button
             deleteButton = new Button();
             deleteButton.Text = "Delete";
-            deleteButton.Size = new Size(80, 30);
-            deleteButton.Location = new Point(435, 55);
+            deleteButton.Size = new Size(65, 26);
             deleteButton.BackColor = Color.LightCoral;
             deleteButton.FlatStyle = FlatStyle.Flat;
+            deleteButton.Font = new Font("Segoe UI", 8.5F);
+            deleteButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             deleteButton.Click += DeleteButton_Click;
             this.Controls.Add(deleteButton);
+
+            // Position buttons based on control width
+            PositionButtons();
+
+            // Handle resize to adjust components
+            this.Resize += TimerControl_Resize;
+        }
+
+        private void UpdateInfoLabel()
+        {
+            if (infoLabel != null)
+            {
+                infoLabel.Text = $"Name: {TimerName} Desc: {TimerNarrative}";
+            }
+        }
+
+        private void PositionButtons()
+        {
+            if (startStopButton != null && deleteButton != null)
+            {
+                startStopButton.Location = new Point(this.Width - 140, 28);
+                deleteButton.Location = new Point(this.Width - 72, 28);
+            }
+        }
+
+        private void TimerControl_Resize(object sender, EventArgs e)
+        {
+            if (infoLabel != null)
+            {
+                infoLabel.Width = this.Width - 160;
+            }
+            PositionButtons();
         }
 
         private void Timer_Tick(object sender, EventArgs e)
@@ -289,26 +470,30 @@ namespace TimerApplication
 
         private void DeleteButton_Click(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show("Are you sure you want to delete the timer '" + TimerName + "'?",
+            DialogResult result = MessageBox.Show($"Delete timer '{TimerName}'?",
                 "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
             if (result == DialogResult.Yes)
             {
                 timer.Stop();
                 timer.Dispose();
-                if (TimerDeleted != null)
-                {
-                    TimerDeleted(this, EventArgs.Empty);
-                }
+                TimerDeleted?.Invoke(this, EventArgs.Empty);
             }
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && timer != null)
+            if (disposing)
             {
-                timer.Stop();
-                timer.Dispose();
+                if (timer != null)
+                {
+                    timer.Stop();
+                    timer.Dispose();
+                }
+                if (toolTip != null)
+                {
+                    toolTip.Dispose();
+                }
             }
             base.Dispose(disposing);
         }
@@ -356,9 +541,12 @@ namespace TimerApplication
             this.components = new System.ComponentModel.Container();
             this.SuspendLayout();
 
+            // Set DPI awareness
+            this.AutoScaleMode = AutoScaleMode.Dpi;
+
             this.Text = "Create New Timer";
-            this.Size = new Size(400, 250);
-            this.StartPosition = FormStartPosition.CenterParent;
+            this.ClientSize = new Size(340, 200);
+            this.StartPosition = FormStartPosition.Manual;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -373,55 +561,64 @@ namespace TimerApplication
             // Name label
             Label nameLabel = new Label();
             nameLabel.Text = "Timer Name:";
-            nameLabel.Location = new Point(20, 20);
-            nameLabel.Size = new Size(100, 20);
+            nameLabel.Location = new Point(12, 12);
+            nameLabel.Size = new Size(100, 18);
+            nameLabel.Font = new Font("Segoe UI", 9F);
             this.Controls.Add(nameLabel);
 
             // Name textbox
             nameTextBox = new TextBox();
-            nameTextBox.Location = new Point(20, 45);
-            nameTextBox.Size = new Size(340, 25);
+            nameTextBox.Location = new Point(12, 33);
+            nameTextBox.Size = new Size(316, 23);
             nameTextBox.MaxLength = 50;
+            nameTextBox.Font = new Font("Segoe UI", 9F);
             this.Controls.Add(nameTextBox);
 
             // Narrative label
             Label narrativeLabel = new Label();
             narrativeLabel.Text = "Description:";
-            narrativeLabel.Location = new Point(20, 80);
-            narrativeLabel.Size = new Size(100, 20);
+            narrativeLabel.Location = new Point(12, 65);
+            narrativeLabel.Size = new Size(100, 18);
+            narrativeLabel.Font = new Font("Segoe UI", 9F);
             this.Controls.Add(narrativeLabel);
 
             // Narrative textbox
             narrativeTextBox = new TextBox();
-            narrativeTextBox.Location = new Point(20, 105);
-            narrativeTextBox.Size = new Size(340, 60);
+            narrativeTextBox.Location = new Point(12, 86);
+            narrativeTextBox.Size = new Size(316, 50);
             narrativeTextBox.Multiline = true;
             narrativeTextBox.MaxLength = 200;
             narrativeTextBox.ScrollBars = ScrollBars.Vertical;
+            narrativeTextBox.Font = new Font("Segoe UI", 9F);
             this.Controls.Add(narrativeTextBox);
 
             // OK button
             okButton = new Button();
-            okButton.Text = "Create Timer";
-            okButton.Size = new Size(100, 30);
-            okButton.Location = new Point(180, 180);
+            okButton.Text = "Create";
+            okButton.Size = new Size(90, 28);
+            okButton.Location = new Point(148, 155);
             okButton.BackColor = Color.LightBlue;
             okButton.FlatStyle = FlatStyle.Flat;
+            okButton.Font = new Font("Segoe UI", 9F);
             okButton.Click += OkButton_Click;
             this.Controls.Add(okButton);
 
             // Cancel button
             cancelButton = new Button();
             cancelButton.Text = "Cancel";
-            cancelButton.Size = new Size(100, 30);
-            cancelButton.Location = new Point(290, 180);
+            cancelButton.Size = new Size(90, 28);
+            cancelButton.Location = new Point(244, 155);
             cancelButton.BackColor = Color.LightGray;
             cancelButton.FlatStyle = FlatStyle.Flat;
+            cancelButton.Font = new Font("Segoe UI", 9F);
             cancelButton.DialogResult = DialogResult.Cancel;
             this.Controls.Add(cancelButton);
 
             this.AcceptButton = okButton;
             this.CancelButton = cancelButton;
+
+            // Focus on name textbox when dialog opens
+            this.Shown += (s, e) => nameTextBox.Focus();
         }
 
         private void OkButton_Click(object sender, EventArgs e)
