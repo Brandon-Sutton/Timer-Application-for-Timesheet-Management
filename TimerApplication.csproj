@@ -7,7 +7,13 @@
 		<UseWindowsForms>true</UseWindowsForms>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
+
+		<!-- Disable automatic DPI scaling by the framework -->
+		<!-- We'll handle it manually for better control -->
 		<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+
+		<!-- Ensure the application is DPI aware -->
+		<EnableWindowsFormsHighDpiAutoResizing>false</EnableWindowsFormsHighDpiAutoResizing>
 	</PropertyGroup>
 
 </Project>
