@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Drawing.Drawing2D;
+using System.Text;
 
 namespace TimerApplication
 {
@@ -9,9 +10,65 @@ namespace TimerApplication
         private Panel containerPanel;
         private Button createTimerButton;
         private Button exportButton;
+        private Button deleteAllButton;
+        private CheckBox darkModeToggle;
+        private bool isDarkMode = false;
         private const int MAX_TIMERS = 30;
         private const int TIMER_HEIGHT = 60;
+        private const int TIMER_SPACING = 5;
         private const int TIMER_TOTAL_HEIGHT = 65;
+
+        // Color schemes
+        private class ColorScheme
+        {
+            public Color FormBackground { get; set; }
+            public Color PanelBackground { get; set; }
+            public Color ContainerBackground { get; set; }
+            public Color TimerBackground { get; set; }
+            public Color TextColor { get; set; }
+            public Color TimeColor { get; set; }
+            public Color ButtonCreateColor { get; set; }
+            public Color ButtonExportColor { get; set; }
+            public Color ButtonDeleteAllColor { get; set; }
+            public Color ButtonPlayColor { get; set; }
+            public Color ButtonStopColor { get; set; }
+            public Color ButtonDeleteColor { get; set; }
+            public Color BorderColor { get; set; }
+        }
+
+        private ColorScheme lightMode = new ColorScheme
+        {
+            FormBackground = Color.WhiteSmoke,
+            PanelBackground = Color.FromArgb(250, 250, 250),
+            ContainerBackground = Color.White,
+            TimerBackground = Color.White,
+            TextColor = Color.Black,
+            TimeColor = Color.DarkBlue,
+            ButtonCreateColor = Color.LightBlue,
+            ButtonExportColor = Color.LightGreen,
+            ButtonDeleteAllColor = Color.FromArgb(255, 200, 200),
+            ButtonPlayColor = Color.FromArgb(144, 238, 144),
+            ButtonStopColor = Color.FromArgb(255, 165, 0),
+            ButtonDeleteColor = Color.FromArgb(255, 182, 193),
+            BorderColor = SystemColors.ControlDark
+        };
+
+        private ColorScheme darkMode = new ColorScheme
+        {
+            FormBackground = Color.FromArgb(30, 30, 30),
+            PanelBackground = Color.FromArgb(40, 40, 40),
+            ContainerBackground = Color.FromArgb(45, 45, 45),
+            TimerBackground = Color.FromArgb(50, 50, 50),
+            TextColor = Color.FromArgb(230, 230, 230),
+            TimeColor = Color.FromArgb(100, 180, 255),
+            ButtonCreateColor = Color.FromArgb(70, 130, 180),
+            ButtonExportColor = Color.FromArgb(60, 120, 60),
+            ButtonDeleteAllColor = Color.FromArgb(120, 40, 40),
+            ButtonPlayColor = Color.FromArgb(60, 120, 60),
+            ButtonStopColor = Color.FromArgb(180, 100, 40),
+            ButtonDeleteColor = Color.FromArgb(150, 50, 50),
+            BorderColor = Color.FromArgb(60, 60, 60)
+        };
 
         public Form1()
         {
@@ -21,61 +78,97 @@ namespace TimerApplication
 
         private void SetupUI()
         {
+            // Set DPI awareness for consistent scaling
             this.AutoScaleMode = AutoScaleMode.Dpi;
 
+            // Update form properties - Slimmer design
             this.Text = "Multi-Timer Application";
             this.ClientSize = new Size(480, 650);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.BackColor = Color.WhiteSmoke;
+            this.BackColor = lightMode.FormBackground;
             this.MinimumSize = new Size(496, 400);
             this.FormBorderStyle = FormBorderStyle.Sizable;
 
             // Create Timer button
             createTimerButton = new Button();
-            createTimerButton.Text = "Create New Timer";
-            createTimerButton.Size = new Size(140, 32);
+            createTimerButton.Text = "➕ New Timer";
+            createTimerButton.Size = new Size(110, 32);
             createTimerButton.Location = new Point(8, 8);
-            createTimerButton.BackColor = Color.LightBlue;
+            createTimerButton.BackColor = lightMode.ButtonCreateColor;
             createTimerButton.FlatStyle = FlatStyle.Flat;
+            createTimerButton.FlatAppearance.BorderSize = 0;
             createTimerButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
             createTimerButton.Click += CreateTimerButton_Click;
             createTimerButton.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            createTimerButton.Cursor = Cursors.Hand;
             this.Controls.Add(createTimerButton);
 
             // Export button
             exportButton = new Button();
-            exportButton.Text = "Export to CSV";
-            exportButton.Size = new Size(140, 32);
-            exportButton.Location = new Point(156, 8);
-            exportButton.BackColor = Color.LightGreen;
+            exportButton.Text = "📊 Export";
+            exportButton.Size = new Size(85, 32);
+            exportButton.Location = new Point(123, 8);
+            exportButton.BackColor = lightMode.ButtonExportColor;
             exportButton.FlatStyle = FlatStyle.Flat;
+            exportButton.FlatAppearance.BorderSize = 0;
             exportButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
             exportButton.Click += ExportButton_Click;
             exportButton.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            exportButton.Cursor = Cursors.Hand;
             this.Controls.Add(exportButton);
+
+            // Delete All button
+            deleteAllButton = new Button();
+            deleteAllButton.Text = "Delete All";
+            deleteAllButton.Size = new Size(90, 32);
+            deleteAllButton.Location = new Point(213, 8);
+            deleteAllButton.BackColor = lightMode.ButtonDeleteAllColor;
+            deleteAllButton.FlatStyle = FlatStyle.Flat;
+            deleteAllButton.FlatAppearance.BorderSize = 0;
+            deleteAllButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+            deleteAllButton.Click += DeleteAllButton_Click;
+            deleteAllButton.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            deleteAllButton.Cursor = Cursors.Hand;
+            this.Controls.Add(deleteAllButton);
+
+            // Dark mode toggle
+            darkModeToggle = new CheckBox();
+            darkModeToggle.Text = "🌙";
+            darkModeToggle.Size = new Size(50, 32);
+            darkModeToggle.Location = new Point(this.ClientSize.Width - 58, 8);
+            darkModeToggle.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            darkModeToggle.Appearance = Appearance.Button;
+            darkModeToggle.FlatStyle = FlatStyle.Flat;
+            darkModeToggle.FlatAppearance.BorderSize = 0;
+            darkModeToggle.Font = new Font("Segoe UI", 12F);
+            darkModeToggle.TextAlign = ContentAlignment.MiddleCenter;
+            darkModeToggle.Cursor = Cursors.Hand;
+            darkModeToggle.BackColor = Color.FromArgb(200, 200, 200);
+            darkModeToggle.CheckedChanged += DarkModeToggle_CheckedChanged;
+            this.Controls.Add(darkModeToggle);
 
             // Main panel with custom scrollbar
             mainPanel = new Panel();
             mainPanel.Location = new Point(8, 48);
             mainPanel.Size = new Size(464, 594);
             mainPanel.BorderStyle = BorderStyle.FixedSingle;
-            mainPanel.BackColor = Color.FromArgb(250, 250, 250);
+            mainPanel.BackColor = lightMode.PanelBackground;
             mainPanel.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             mainPanel.AutoScroll = false;
             this.Controls.Add(mainPanel);
 
-            // Container panel inside main panel (this will hold the timers)
+            // Container panel inside main panel
             containerPanel = new Panel();
             containerPanel.Location = new Point(0, 0);
             containerPanel.Size = new Size(mainPanel.ClientSize.Width - 25, 10);
-            containerPanel.BackColor = Color.White;
+            containerPanel.BackColor = lightMode.ContainerBackground;
             containerPanel.AutoScroll = false;
             mainPanel.Controls.Add(containerPanel);
 
             // Create custom scrollbar
             VScrollBar scrollBar = new VScrollBar();
             scrollBar.Dock = DockStyle.Right;
-            scrollBar.Width = 25; // Wider scrollbar
+            scrollBar.Width = 25;
             scrollBar.Minimum = 0;
             scrollBar.Maximum = 0;
             scrollBar.SmallChange = 20;
@@ -92,6 +185,75 @@ namespace TimerApplication
 
             // Handle form resize
             this.Resize += Form1_Resize;
+
+            UpdateDeleteAllButtonState();
+        }
+
+        private void DarkModeToggle_CheckedChanged(object sender, EventArgs e)
+        {
+            isDarkMode = darkModeToggle.Checked;
+            darkModeToggle.Text = isDarkMode ? "☀" : "🌙";
+            darkModeToggle.BackColor = isDarkMode ? Color.FromArgb(60, 60, 60) : Color.FromArgb(200, 200, 200);
+            ApplyColorScheme();
+        }
+
+        private void ApplyColorScheme()
+        {
+            ColorScheme scheme = isDarkMode ? darkMode : lightMode;
+
+            this.BackColor = scheme.FormBackground;
+            mainPanel.BackColor = scheme.PanelBackground;
+            containerPanel.BackColor = scheme.ContainerBackground;
+
+            createTimerButton.BackColor = scheme.ButtonCreateColor;
+            createTimerButton.ForeColor = scheme.TextColor;
+
+            exportButton.BackColor = scheme.ButtonExportColor;
+            exportButton.ForeColor = scheme.TextColor;
+
+            deleteAllButton.BackColor = scheme.ButtonDeleteAllColor;
+            deleteAllButton.ForeColor = scheme.TextColor;
+
+            // Update all existing timers
+            foreach (TimerControl timer in timers)
+            {
+                timer.ApplyColorScheme(isDarkMode);
+            }
+
+            // Refresh the form
+            this.Refresh();
+        }
+
+        private void DeleteAllButton_Click(object sender, EventArgs e)
+        {
+            if (timers.Count == 0) return;
+
+            DialogResult result = MessageBox.Show(
+                $"Are you sure you want to delete all {timers.Count} timers?",
+                "Delete All Timers",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Yes)
+            {
+                // Stop and dispose all timers
+                foreach (var timer in timers.ToList())
+                {
+                    containerPanel.Controls.Remove(timer);
+                    timer.Dispose();
+                }
+
+                timers.Clear();
+                UpdateScrollBar();
+                updateCreateButtonState();
+                UpdateDeleteAllButtonState();
+            }
+        }
+
+        private void UpdateDeleteAllButtonState()
+        {
+            deleteAllButton.Enabled = timers.Count > 0;
+            deleteAllButton.Text = "🗑 Delete All";
         }
 
         private void ScrollBar_Scroll(object sender, ScrollEventArgs e)
@@ -124,8 +286,6 @@ namespace TimerApplication
                     scrollBar.Visible = true;
                     scrollBar.Maximum = totalHeight - visibleHeight + scrollBar.LargeChange - 1;
                     scrollBar.LargeChange = visibleHeight;
-
-                    // Adjust container width when scrollbar is visible
                     containerPanel.Width = mainPanel.ClientSize.Width - scrollBar.Width - 5;
                 }
                 else
@@ -133,16 +293,12 @@ namespace TimerApplication
                     scrollBar.Visible = false;
                     scrollBar.Value = 0;
                     containerPanel.Top = 0;
-
-                    // Full width when no scrollbar
                     containerPanel.Width = mainPanel.ClientSize.Width - 5;
                 }
 
-                // Update container height
                 containerPanel.Height = Math.Max(totalHeight, visibleHeight);
             }
 
-            // Update all timer widths
             foreach (TimerControl timer in timers)
             {
                 timer.Width = containerPanel.Width - 10;
@@ -165,16 +321,12 @@ namespace TimerApplication
                 return;
             }
 
-            // Calculate dialog position based on button location
             Point buttonScreenLocation = createTimerButton.PointToScreen(Point.Empty);
 
-            TimerCreationDialog dialog = new TimerCreationDialog();
+            TimerCreationDialog dialog = new TimerCreationDialog(isDarkMode);
             dialog.StartPosition = FormStartPosition.Manual;
-
-            // Position dialog at button location
             dialog.Location = new Point(buttonScreenLocation.X, buttonScreenLocation.Y + createTimerButton.Height + 5);
 
-            // Make sure dialog doesn't go off screen
             Rectangle screenBounds = Screen.FromControl(this).WorkingArea;
             if (dialog.Right > screenBounds.Right)
                 dialog.Left = screenBounds.Right - dialog.Width;
@@ -183,10 +335,9 @@ namespace TimerApplication
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
-                // Calculate exact position for new timer
                 int yPosition = timers.Count * TIMER_TOTAL_HEIGHT + 5;
 
-                TimerControl newTimer = new TimerControl(dialog.TimerName, dialog.TimerNarrative);
+                TimerControl newTimer = new TimerControl(dialog.TimerName, dialog.TimerNarrative, isDarkMode);
                 newTimer.Location = new Point(5, yPosition);
                 newTimer.Size = new Size(containerPanel.Width - 10, TIMER_HEIGHT);
                 newTimer.TimerDeleted += NewTimer_TimerDeleted;
@@ -196,8 +347,7 @@ namespace TimerApplication
 
                 UpdateScrollBar();
                 updateCreateButtonState();
-
-                // Scroll to show the new timer
+                UpdateDeleteAllButtonState();
                 ScrollToTimer(newTimer);
             }
         }
@@ -230,7 +380,6 @@ namespace TimerApplication
                 containerPanel.Controls.Remove(timerToRemove);
                 timerToRemove.Dispose();
 
-                // Reposition all timers after the removed one
                 for (int i = removedIndex; i < timers.Count; i++)
                 {
                     int yPosition = i * TIMER_TOTAL_HEIGHT + 5;
@@ -239,6 +388,7 @@ namespace TimerApplication
 
                 UpdateScrollBar();
                 updateCreateButtonState();
+                UpdateDeleteAllButtonState();
             }
         }
 
@@ -251,7 +401,7 @@ namespace TimerApplication
             }
             else
             {
-                createTimerButton.Text = $"New Timer ({timers.Count}/{MAX_TIMERS})";
+                createTimerButton.Text = $"➕ New ({timers.Count}/{MAX_TIMERS})";
             }
         }
 
@@ -279,16 +429,90 @@ namespace TimerApplication
                     {
                         double totalMinutes = timer.GetElapsedTimeSpan().TotalMinutes;
                         double decimalHours = Math.Ceiling(totalMinutes / 6.0) * 0.1;
-
                         csv.AppendLine("\"" + timer.TimerName + "\",\"" + timer.TimerNarrative + "\",\"" + decimalHours.ToString("0.0") + "\"");
                     }
 
                     File.WriteAllText(saveDialog.FileName, csv.ToString());
-                    MessageBox.Show("Timers exported successfully to:\n" + saveDialog.FileName, "Export Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Timers exported successfully!", "Export Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show("Error exporting timers:\n" + ex.Message, "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+    }
+
+    // Custom Icon Button class for play/pause and delete buttons
+    public class IconButton : Button
+    {
+        public enum ButtonIcon { Play, Stop, Delete }
+        private ButtonIcon icon;
+        private bool isDarkMode;
+
+        public ButtonIcon Icon
+        {
+            get { return icon; }
+            set { icon = value; Invalidate(); }
+        }
+
+        public bool IsDarkMode
+        {
+            get { return isDarkMode; }
+            set { isDarkMode = value; Invalidate(); }
+        }
+
+        public IconButton()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.DoubleBuffer, true);
+            this.FlatStyle = FlatStyle.Flat;
+            this.FlatAppearance.BorderSize = 0;
+            this.Size = new Size(32, 32);
+            this.Cursor = Cursors.Hand;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            // Draw background
+            using (SolidBrush bgBrush = new SolidBrush(this.BackColor))
+            {
+                g.FillRectangle(bgBrush, this.ClientRectangle);
+            }
+
+            // Draw icon
+            Color iconColor = isDarkMode ? Color.FromArgb(230, 230, 230) : Color.Black;
+            using (Pen pen = new Pen(iconColor, 2))
+            using (SolidBrush brush = new SolidBrush(iconColor))
+            {
+                int padding = 8;
+                Rectangle iconRect = new Rectangle(padding, padding, Width - 2 * padding, Height - 2 * padding);
+
+                switch (icon)
+                {
+                    case ButtonIcon.Play:
+                        // Draw play triangle
+                        Point[] playPoints = new Point[] {
+                            new Point(iconRect.Left + 2, iconRect.Top),
+                            new Point(iconRect.Left + 2, iconRect.Bottom),
+                            new Point(iconRect.Right - 2, iconRect.Top + iconRect.Height / 2)
+                        };
+                        g.FillPolygon(brush, playPoints);
+                        break;
+
+                    case ButtonIcon.Stop:
+                        // Draw stop square
+                        g.FillRectangle(brush, iconRect);
+                        break;
+
+                    case ButtonIcon.Delete:
+                        // Draw X
+                        g.DrawLine(pen, iconRect.Left, iconRect.Top, iconRect.Right, iconRect.Bottom);
+                        g.DrawLine(pen, iconRect.Right, iconRect.Top, iconRect.Left, iconRect.Bottom);
+                        break;
                 }
             }
         }
@@ -299,11 +523,12 @@ namespace TimerApplication
         private System.Windows.Forms.Timer timer;
         private TimeSpan elapsedTime;
         private bool isRunning;
+        private bool isDarkMode;
 
         private Label infoLabel;
         private Label timeLabel;
-        private Button startStopButton;
-        private Button deleteButton;
+        private IconButton playStopButton;
+        private IconButton deleteButton;
         private ToolTip toolTip;
 
         public string TimerName { get; private set; }
@@ -315,10 +540,11 @@ namespace TimerApplication
 
         public event EventHandler TimerDeleted;
 
-        public TimerControl(string name, string narrative)
+        public TimerControl(string name, string narrative, bool darkMode = false)
         {
             TimerName = name;
             TimerNarrative = narrative;
+            isDarkMode = darkMode;
             InitializeTimer();
             SetupTimerUI();
             StartTimer();
@@ -337,17 +563,14 @@ namespace TimerApplication
         {
             this.Size = new Size(420, 60);
             this.BorderStyle = BorderStyle.FixedSingle;
-            this.BackColor = Color.White;
-
-            // Disable anchor for fixed positioning
             this.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
 
-            // Create tooltip for full text display
+            // Create tooltip
             toolTip = new ToolTip();
             toolTip.AutomaticDelay = 500;
             toolTip.ReshowDelay = 100;
 
-            // Single info label for name and description
+            // Info label
             infoLabel = new Label();
             UpdateInfoLabel();
             infoLabel.Location = new Point(8, 6);
@@ -356,8 +579,7 @@ namespace TimerApplication
             infoLabel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             infoLabel.AutoEllipsis = true;
 
-            // Set tooltip to show full text
-            string fullText = $"{TimerName}: {TimerNarrative}";
+            string fullText = $"Name: {TimerName} Desc: {TimerNarrative}";
             toolTip.SetToolTip(infoLabel, fullText);
 
             this.Controls.Add(infoLabel);
@@ -368,52 +590,69 @@ namespace TimerApplication
             timeLabel.Location = new Point(8, 30);
             timeLabel.Size = new Size(130, 22);
             timeLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            timeLabel.ForeColor = Color.DarkBlue;
             this.Controls.Add(timeLabel);
 
-            // Start/Stop button
-            startStopButton = new Button();
-            startStopButton.Text = "Stop";
-            startStopButton.Size = new Size(65, 26);
-            startStopButton.BackColor = Color.Orange;
-            startStopButton.FlatStyle = FlatStyle.Flat;
-            startStopButton.Font = new Font("Segoe UI", 8.5F);
-            startStopButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            startStopButton.Click += StartStopButton_Click;
-            this.Controls.Add(startStopButton);
+            // Play/Stop button
+            playStopButton = new IconButton();
+            playStopButton.Icon = IconButton.ButtonIcon.Stop;
+            playStopButton.Size = new Size(32, 26);
+            playStopButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            playStopButton.Click += PlayStopButton_Click;
+            this.Controls.Add(playStopButton);
 
             // Delete button
-            deleteButton = new Button();
-            deleteButton.Text = "Delete";
-            deleteButton.Size = new Size(65, 26);
-            deleteButton.BackColor = Color.LightCoral;
-            deleteButton.FlatStyle = FlatStyle.Flat;
-            deleteButton.Font = new Font("Segoe UI", 8.5F);
+            deleteButton = new IconButton();
+            deleteButton.Icon = IconButton.ButtonIcon.Delete;
+            deleteButton.Size = new Size(32, 26);
             deleteButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             deleteButton.Click += DeleteButton_Click;
             this.Controls.Add(deleteButton);
 
-            // Position buttons based on control width
+            ApplyColorScheme(isDarkMode);
             PositionButtons();
 
-            // Handle resize to adjust components
             this.Resize += TimerControl_Resize;
+        }
+
+        public void ApplyColorScheme(bool darkMode)
+        {
+            isDarkMode = darkMode;
+
+            if (isDarkMode)
+            {
+                this.BackColor = Color.FromArgb(50, 50, 50);
+                infoLabel.ForeColor = Color.FromArgb(230, 230, 230);
+                timeLabel.ForeColor = Color.FromArgb(100, 180, 255);
+                playStopButton.BackColor = isRunning ? Color.FromArgb(180, 100, 40) : Color.FromArgb(60, 120, 60);
+                deleteButton.BackColor = Color.FromArgb(150, 50, 50);
+            }
+            else
+            {
+                this.BackColor = Color.White;
+                infoLabel.ForeColor = Color.Black;
+                timeLabel.ForeColor = Color.DarkBlue;
+                playStopButton.BackColor = isRunning ? Color.FromArgb(255, 165, 0) : Color.FromArgb(144, 238, 144);
+                deleteButton.BackColor = Color.FromArgb(255, 182, 193);
+            }
+
+            playStopButton.IsDarkMode = darkMode;
+            deleteButton.IsDarkMode = darkMode;
         }
 
         private void UpdateInfoLabel()
         {
             if (infoLabel != null)
             {
-                infoLabel.Text = $"Name: {TimerName} Desc: {TimerNarrative}";
+                infoLabel.Text = $"{TimerName} | {TimerNarrative}";
             }
         }
 
         private void PositionButtons()
         {
-            if (startStopButton != null && deleteButton != null)
+            if (playStopButton != null && deleteButton != null)
             {
-                startStopButton.Location = new Point(this.Width - 140, 28);
-                deleteButton.Location = new Point(this.Width - 72, 28);
+                playStopButton.Location = new Point(this.Width - 72, 28);
+                deleteButton.Location = new Point(this.Width - 38, 28);
             }
         }
 
@@ -421,7 +660,7 @@ namespace TimerApplication
         {
             if (infoLabel != null)
             {
-                infoLabel.Width = this.Width - 160;
+                infoLabel.Width = this.Width - 85;
             }
             PositionButtons();
         }
@@ -440,7 +679,7 @@ namespace TimerApplication
             }
         }
 
-        private void StartStopButton_Click(object sender, EventArgs e)
+        private void PlayStopButton_Click(object sender, EventArgs e)
         {
             if (isRunning)
             {
@@ -456,16 +695,16 @@ namespace TimerApplication
         {
             timer.Start();
             isRunning = true;
-            startStopButton.Text = "Stop";
-            startStopButton.BackColor = Color.Orange;
+            playStopButton.Icon = IconButton.ButtonIcon.Stop;
+            playStopButton.BackColor = isDarkMode ? Color.FromArgb(180, 100, 40) : Color.FromArgb(255, 165, 0);
         }
 
         private void StopTimer()
         {
             timer.Stop();
             isRunning = false;
-            startStopButton.Text = "Start";
-            startStopButton.BackColor = Color.LightGreen;
+            playStopButton.Icon = IconButton.ButtonIcon.Play;
+            playStopButton.BackColor = isDarkMode ? Color.FromArgb(60, 120, 60) : Color.FromArgb(144, 238, 144);
         }
 
         private void DeleteButton_Click(object sender, EventArgs e)
@@ -511,6 +750,7 @@ namespace TimerApplication
         private TextBox narrativeTextBox;
         private Button okButton;
         private Button cancelButton;
+        private bool isDarkMode;
 
         public string TimerName
         {
@@ -522,8 +762,9 @@ namespace TimerApplication
             get { return narrativeTextBox != null ? narrativeTextBox.Text.Trim() : ""; }
         }
 
-        public TimerCreationDialog()
+        public TimerCreationDialog(bool darkMode = false)
         {
+            isDarkMode = darkMode;
             InitializeComponent();
         }
 
@@ -541,7 +782,6 @@ namespace TimerApplication
             this.components = new System.ComponentModel.Container();
             this.SuspendLayout();
 
-            // Set DPI awareness
             this.AutoScaleMode = AutoScaleMode.Dpi;
 
             this.Text = "Create New Timer";
@@ -551,6 +791,13 @@ namespace TimerApplication
             this.MaximizeBox = false;
             this.MinimizeBox = false;
 
+            // Apply dark mode colors if enabled
+            if (isDarkMode)
+            {
+                this.BackColor = Color.FromArgb(45, 45, 45);
+                this.ForeColor = Color.FromArgb(230, 230, 230);
+            }
+
             SetupDialogUI();
 
             this.ResumeLayout(false);
@@ -558,12 +805,17 @@ namespace TimerApplication
 
         private void SetupDialogUI()
         {
+            Color labelColor = isDarkMode ? Color.FromArgb(230, 230, 230) : Color.Black;
+            Color textBoxBack = isDarkMode ? Color.FromArgb(60, 60, 60) : Color.White;
+            Color textBoxFore = isDarkMode ? Color.FromArgb(230, 230, 230) : Color.Black;
+
             // Name label
             Label nameLabel = new Label();
             nameLabel.Text = "Timer Name:";
             nameLabel.Location = new Point(12, 12);
             nameLabel.Size = new Size(100, 18);
             nameLabel.Font = new Font("Segoe UI", 9F);
+            nameLabel.ForeColor = labelColor;
             this.Controls.Add(nameLabel);
 
             // Name textbox
@@ -572,6 +824,9 @@ namespace TimerApplication
             nameTextBox.Size = new Size(316, 23);
             nameTextBox.MaxLength = 50;
             nameTextBox.Font = new Font("Segoe UI", 9F);
+            nameTextBox.BackColor = textBoxBack;
+            nameTextBox.ForeColor = textBoxFore;
+            nameTextBox.BorderStyle = BorderStyle.FixedSingle;
             this.Controls.Add(nameTextBox);
 
             // Narrative label
@@ -580,6 +835,7 @@ namespace TimerApplication
             narrativeLabel.Location = new Point(12, 65);
             narrativeLabel.Size = new Size(100, 18);
             narrativeLabel.Font = new Font("Segoe UI", 9F);
+            narrativeLabel.ForeColor = labelColor;
             this.Controls.Add(narrativeLabel);
 
             // Narrative textbox
@@ -590,6 +846,9 @@ namespace TimerApplication
             narrativeTextBox.MaxLength = 200;
             narrativeTextBox.ScrollBars = ScrollBars.Vertical;
             narrativeTextBox.Font = new Font("Segoe UI", 9F);
+            narrativeTextBox.BackColor = textBoxBack;
+            narrativeTextBox.ForeColor = textBoxFore;
+            narrativeTextBox.BorderStyle = BorderStyle.FixedSingle;
             this.Controls.Add(narrativeTextBox);
 
             // OK button
@@ -597,9 +856,12 @@ namespace TimerApplication
             okButton.Text = "Create";
             okButton.Size = new Size(90, 28);
             okButton.Location = new Point(148, 155);
-            okButton.BackColor = Color.LightBlue;
+            okButton.BackColor = isDarkMode ? Color.FromArgb(70, 130, 180) : Color.LightBlue;
+            okButton.ForeColor = isDarkMode ? Color.FromArgb(230, 230, 230) : Color.Black;
             okButton.FlatStyle = FlatStyle.Flat;
+            okButton.FlatAppearance.BorderSize = 0;
             okButton.Font = new Font("Segoe UI", 9F);
+            okButton.Cursor = Cursors.Hand;
             okButton.Click += OkButton_Click;
             this.Controls.Add(okButton);
 
@@ -608,16 +870,18 @@ namespace TimerApplication
             cancelButton.Text = "Cancel";
             cancelButton.Size = new Size(90, 28);
             cancelButton.Location = new Point(244, 155);
-            cancelButton.BackColor = Color.LightGray;
+            cancelButton.BackColor = isDarkMode ? Color.FromArgb(80, 80, 80) : Color.LightGray;
+            cancelButton.ForeColor = isDarkMode ? Color.FromArgb(230, 230, 230) : Color.Black;
             cancelButton.FlatStyle = FlatStyle.Flat;
+            cancelButton.FlatAppearance.BorderSize = 0;
             cancelButton.Font = new Font("Segoe UI", 9F);
+            cancelButton.Cursor = Cursors.Hand;
             cancelButton.DialogResult = DialogResult.Cancel;
             this.Controls.Add(cancelButton);
 
             this.AcceptButton = okButton;
             this.CancelButton = cancelButton;
 
-            // Focus on name textbox when dialog opens
             this.Shown += (s, e) => nameTextBox.Focus();
         }
 
